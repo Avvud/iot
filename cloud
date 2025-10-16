@@ -1,0 +1,58 @@
+#include <WiFi.h>
+#include <ThingSpeak.h>
+
+#define ADC_VREF_mV 3300.0
+#define ADC_RESOLUTION 4096.0
+#define PIN_LM3536 34  // Define a valid analog pin, e.g., GPIO34
+
+const char* ssid = "jaya";
+const char* password = "12345678";
+
+WiFiClient client;
+
+unsigned long myChannelNumber = 2703584;
+const char* myWriteAPIKey = "8QBJZ2LG4UIQGZEF";
+
+unsigned long lastTime = 0;
+unsigned long timerDelay = 30000;
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print("Connecting to WiFi... ");
+    delay(500);
+  }
+
+  Serial.println("\nConnected to WiFi.");
+  ThingSpeak.begin(client);
+}
+
+void loop() {
+  if (millis() - lastTime > timerDelay) {
+
+    int adcVal = analogRead(PIN_LM3536);
+    float milliVolt = adcVal * (ADC_VREF_mV / ADC_RESOLUTION);
+    float tempC = milliVolt / 10.0;
+    float tempF = tempC * 9.0 / 5.0 + 32.0;
+
+    Serial.print("Temperature: ");
+    Serial.print(tempC);
+    Serial.print("°C ~ ");
+    Serial.print(tempF);
+    Serial.println("°F");
+
+    ThingSpeak.setField(1, tempF);
+    int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+
+    if (x == 200) {
+      Serial.println("Channel update successful.");
+    } else {
+      Serial.print("Problem updating channel. HTTP error code: ");
+      Serial.println(x);
+    }
+
+    lastTime = millis();
+  }
+}
